@@ -15,7 +15,8 @@ const port = process.env.PORT || 3000; // Sử dụng PORT từ env cho Render.c
 app.use(cors({
   origin: [
     'http://localhost:5173',  // Vite dev server (thay port nếu khác)
-    'http://localhost:3000'   // Nếu dùng Create React App
+    'http://localhost:3000',
+    'https://fe-post-mnm.vercel.app/'   // Nếu dùng Create React App
     // Thêm domain production khi deploy: 'https://your-frontend-domain.com'
   ],
   credentials: true,  // Nếu dùng cookie/auth (tùy chọn)
