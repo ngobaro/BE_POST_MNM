@@ -1,15 +1,28 @@
 const express = require('express');
 const mysql = require('mysql2');
 const dotenv = require('dotenv');
+const cors = require('cors'); // Thêm CORS middleware
 
 // 1. Cấu hình Biến Môi trường và Khởi tạo Server
 // Load biến môi trường từ file .env (Giả định bạn đã đặt thông tin kết nối vào .env)
 dotenv.config();
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000; // Sử dụng PORT từ env cho Render.com (mặc định 3000 cho local)
 
 // Middleware để phân tích body của request (JSON)
+// THÊM CORS NGAY SAU ĐÂY - Cho phép frontend localhost gọi API
+app.use(cors({
+  origin: [
+    'http://localhost:5173',  // Vite dev server (thay port nếu khác)
+    'http://localhost:3000'   // Nếu dùng Create React App
+    // Thêm domain production khi deploy: 'https://your-frontend-domain.com'
+  ],
+  credentials: true,  // Nếu dùng cookie/auth (tùy chọn)
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],  // Các HTTP method cần
+  allowedHeaders: ['Content-Type', 'Authorization']  // Headers cho phép
+}));
+
 app.use(express.json());
 
 // --- 2. Thiết lập Kết nối Database ---
