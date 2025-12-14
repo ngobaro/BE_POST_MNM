@@ -9,20 +9,19 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-// CORS: SỬA - Origin exact match, KHÔNG / cuối
+// CORS: Origin exact match, KHÔNG / cuối
 app.use(cors({
   origin: [
     'http://localhost:5173',  // Local dev
     'http://localhost:3000',  // CRA nếu cần
-    'https://fe-post-mnm.vercel.app'  // Vercel - KHÔNG / CUỐI!
+    'https://fe-post-mnm.vercel.app'  // Vercel - Exact!
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Preflight cho tất cả routes (nếu cần)
-app.options('*', cors());
+// KHÔNG CẦN: app.options('*', cors());  // ← XÓA DÒNG NÀY - GÂY LỖI!
 
 app.use(express.json());
 
@@ -45,9 +44,9 @@ db.query('SELECT 1 + 1 AS result')
   .then(() => console.log('✅ DB OK'))
   .catch((err) => console.error('❌ DB Error:', err.message));
 
-// 3. Routes (giữ nguyên, nhưng thêm log để debug)
+// 3. Routes (thêm log origin để check CORS trên Render logs)
 app.get('/api/posts', async (req, res) => {
-  console.log('GET /api/posts from origin:', req.headers.origin);  // Log để check Render
+  console.log('GET /api/posts from origin:', req.headers.origin);  // Log để debug
   try {
     const [rows] = await db.query('SELECT * FROM Post ORDER BY createdAt DESC');
     res.status(200).json(rows);
@@ -57,8 +56,20 @@ app.get('/api/posts', async (req, res) => {
   }
 });
 
-// Các route khác giữ nguyên như trước (POST, PUT, DELETE, GET/:id)
+app.get('/api/posts/:id', async (req, res) => {
+  const idPost = req.params.id;
+  try {
+    const [rows] = await db.query('SELECT * FROM Post WHERE idPost = ?', [idPost]);
+    if (rows.length === 0) return res.status(404).json({ message: `Không tìm thấy ID: ${idPost}` });
+    res.status(200).json(rows[0]);
+  } catch (error) {
+    console.error(`Lỗi GET ID ${idPost}:`, error);
+    res.status(500).json({ message: 'Lỗi server.' });
+  }
+});
+
 app.post('/api/posts', async (req, res) => {
+  console.log('POST /api/posts from origin:', req.headers.origin);
   const { title, description } = req.body;
   if (!title) return res.status(400).json({ message: 'Tiêu đề bắt buộc.' });
   try {
@@ -76,11 +87,12 @@ app.post('/api/posts', async (req, res) => {
 });
 
 app.put('/api/posts/:id', async (req, res) => {
+  console.log('PUT /api/posts/:id from origin:', req.headers.origin);
   const idPost = req.params.id;
   const { title, description } = req.body;
   if (!title && !description) return res.status(400).json({ message: 'Cập nhật ít nhất 1 trường.' });
   try {
-    const query = 'UPDATE Post SET title = COALESCE(?, title), description = COALESCE(?, description) WHERE idPost = ?';  // SỬA: Giữ giá trị cũ nếu null
+    const query = 'UPDATE Post SET title = COALESCE(?, title), description = COALESCE(?, description) WHERE idPost = ?';
     const [result] = await db.query(query, [title, description, idPost]);
     if (result.affectedRows === 0) return res.status(404).json({ message: `Không tìm thấy ID: ${idPost}` });
     res.status(200).json({ message: 'Cập nhật OK.', idPost });
@@ -91,6 +103,7 @@ app.put('/api/posts/:id', async (req, res) => {
 });
 
 app.delete('/api/posts/:id', async (req, res) => {
+  console.log('DELETE /api/posts/:id from origin:', req.headers.origin);
   const idPost = req.params.id;
   try {
     const [result] = await db.query('DELETE FROM Post WHERE idPost = ?', [idPost]);
@@ -102,20 +115,8 @@ app.delete('/api/posts/:id', async (req, res) => {
   }
 });
 
-app.get('/api/posts/:id', async (req, res) => {
-  const idPost = req.params.id;
-  try {
-    const [rows] = await db.query('SELECT * FROM Post WHERE idPost = ?', [idPost]);
-    if (rows.length === 0) return res.status(404).json({ message: `Không tìm thấy ID: ${idPost}` });
-    res.status(200).json(rows[0]);
-  } catch (error) {
-    console.error(`Lỗi GET ID ${idPost}:`, error);
-    res.status(500).json({ message: 'Lỗi server.' });
-  }
-});
-
-// 4. Start
+// 4. Start (thêm log để confirm server up)
 app.listen(port, () => {
-  console.log(`🚀 Server port ${port}`);
-  console.log('API ready');
+  console.log(`🚀 Server chạy trên port ${port}`);
+  console.log('API ready: /api/posts');
 });
